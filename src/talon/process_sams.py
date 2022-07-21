@@ -23,7 +23,7 @@ def convert_to_bam(sam, bam):
         raise RuntimeError("Problem converting sam file '%s' to bam." % (sam))
              
 
-def preprocess_sam(sam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
+def preprocess_sam(sam_files, datasets, tmp_dir = "talon_tmp", n_threads = 0):
     """ Copy and rename the provided SAM/BAM file(s), merge them, and index.
         This is necessary in order to use Pybedtools commands on the reads.
         The renaming is necessary in order to label the reads according to
@@ -37,14 +37,14 @@ def preprocess_sam(sam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
     for sam, dataset in zip(sam_files, datasets):
         suffix = "." + sam.split(".")[-1]
         if suffix == ".sam":
-            bam_copy = tmp_dir + dataset + "_unsorted.bam"
+            bam_copy = os.path.join(tmp_dir, dataset + "_unsorted.bam")
             convert_to_bam(sam, bam_copy)
             sam = bam_copy
-        sorted_bam = tmp_dir + dataset + ".bam"
+        sorted_bam = os.path.join(tmp_dir, dataset + ".bam")
         pysam.sort("-@", str(n_threads), "-o", sorted_bam, sam)
         renamed_sams.append(sorted_bam)
 
-    merged_bam = tmp_dir + "merged.bam"
+    merged_bam = os.path.join(tmp_dir, "merged.bam")
     merge_args = [merged_bam] + renamed_sams + ["-f", "-r", "-@", str(n_threads)]
     # index_args = [merged_bam, "-@", str(n_threads)]
 
@@ -60,7 +60,7 @@ def preprocess_sam(sam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
                             "files have headers."))
     return merged_bam
 
-def partition_reads(sam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
+def partition_reads(sam_files, datasets, tmp_dir = "talon_tmp", n_threads = 0):
     """ Use bedtools merge to create non-overlapping intervals from all of the
         transcripts in a series of SAM/BAM files. Then, iterate over the intervals
         to extract all reads inside of them from the pysam object.
@@ -96,18 +96,18 @@ def partition_reads(sam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
 
     return read_groups, coords, merged_bam
 
-def write_reads_to_file(read_groups, intervals, header_template, tmp_dir = "talon_tmp/"):
+def write_reads_to_file(read_groups, intervals, header_template, tmp_dir = "talon_tmp"):
     """ For each read group, iterate over the reads and write them to a file
         named for the interval they belong to. This step is necessary because
         Pysam objects cannot be pickled. """
  
-    tmp_dir = tmp_dir + "interval_files/"
+    tmp_dir = os.path.join(tmp_dir, "interval_files")
     os.system("mkdir -p %s " % (tmp_dir))
  
     outbam_names = []
     with pysam.AlignmentFile(header_template, "rb") as template:
         for group, interval in zip(read_groups, intervals):
-            fname = tmp_dir + "_".join([str(x) for x in interval]) + ".bam"
+            fname = os.path.join(tmp_dir, "_".join([str(x) for x in interval]) + ".bam")
             outbam_names.append(fname)
             with pysam.AlignmentFile(fname, "wb", template = template) as f:
                 for read in group:
