@@ -2428,7 +2428,8 @@ def main():
 
         # Partition the reads
         read_groups, intervals, header_file = procsams.partition_reads(sam_files, datasets,
-                                                                       tmp_dir = tmp_dir)
+                                                                       tmp_dir = tmp_dir,
+                                                                       n_threads = threads - 1)
         read_files = procsams.write_reads_to_file(read_groups, intervals,
                                                   header_file, tmp_dir = tmp_dir)
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
